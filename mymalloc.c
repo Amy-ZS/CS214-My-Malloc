@@ -7,22 +7,11 @@
 
 #define MEMSIZE 4096     // size of memory pool  4096 bytes
 #define HEADERSIZE 8      // size of header  8 bytes
-#define OBJECTS 64        // number of objects  64          
 
-char *obj[OBJECTS];     // array of pointers to objects
-char heap[MEMSIZE];     // memory pool
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include "mymalloc.h"
-
-#define MEMSIZE 4096     // size of memory pool  4096 bytes
-#define HEADERSIZE 8      // size of header  8 bytes
-
-char heap[MEMSIZE];     // memory pool
+static union{
+    char bytes[MEMSIZE];
+    double not_used; // force alignment to double
+} heap;
 
 typedef struct header {
     int size;
@@ -30,42 +19,64 @@ typedef struct header {
     int free;
 } header;
 
-void mymalloc_intialize() {
-    // Initialize the head pointer to the start of the heap
-    header *head = (header *)heap;
+void myalloc_init(){
+    // Cast the start of the heap to a header pointer
+    header *first = (header*)heap.bytes;
     
-    // Set the restsize to the total memory size minus the header size
-    head->size = MEMSIZE - HEADERSIZE;
+    // Set the size of the first block to the total memory size minus the header size
+    first->size = MEMSIZE - HEADERSIZE;
     
     // There is no next block, so set next to NULL
-    head->next = NULL;
+    first->next = NULL;
     
     // Mark the block as free
-    head->free = 1;
+    first->free = 1;
 }
 
-void myalloc(int size, char data) {
-    // Initialize the head pointer to the start of the heap
-    header *head = (header *)heap;
+void * mymalloc(size_t size, char *file, int line){
+    if(! myalloc_init){
+        myalloc_init();
+    }
+    // Cast the start of the heap to a header pointer
+    header *current = (header*)heap.bytes;
     
-    // Find the first free block that is large enough to hold the data
-    while (head->size < size || head->free == 0) {
-        head = head->next;
+    // Find the first block that is large enough
+    while(current->size < size || !current->free){
+        // If there is no next block, return NULL
+        if(current->next == NULL){
+            return NULL;
+        }
+        // Move to the next block
+        current = current->next;
     }
     
-    // If the block is larger than the requested size, split the block
-    if (head->size > size + HEADERSIZE) {
-        header *new = (header *)((char *)head + HEADERSIZE + size);
-        new->size = head->size - size - HEADERSIZE;
-        new->next = head->next;
-        new->free = 1;
-        head->next = new;
-        head->size = size;
+    // If the block is larger than the requested size plus the size of the header
+    if(current->size > size + HEADERSIZE){
+        // Create a new block after the current block
+        header *new_block = (header*)((char*)current + HEADERSIZE + size);
+        
+        // Set the size of the new block to the size of the current block minus the requested size and header size
+        new_block->size = current->size - size - HEADERSIZE;
+        
+        // The new block is free
+        new_block->free = 1;
+        
+        // The new block points to the next block
+        new_block->next = current->next;
+        
+        // The current block is now the requested size
+        current->size = size;
+        
+        // The current block is no longer free
+        current->free = 0;
+        
+        // The current block points to the new block
+        current->next = new_block;
+    } else {
+        // The current block is now the requested size
+        current->free = 0;
     }
     
-    // Mark the block as used
-    head->free = 0;
-    
-    // Copy the data into the block
-    memcpy((char *)head + HEADERSIZE, &data, size);
+    // Return a pointer to the start of the block
+    return (char*)current + HEADERSIZE;
 }
