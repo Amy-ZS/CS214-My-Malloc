@@ -80,3 +80,24 @@ void * mymalloc(size_t size, char *file, int line){
     // Return a pointer to the start of the block
     return (char*)current + HEADERSIZE;
 }
+
+void myfree(void *ptr, char *file, int line){
+    if (! myalloc_init){
+        myalloc_init();
+    }
+
+    // Cast the pointer to a header pointer
+    header *current = (header*)((char*)ptr - HEADERSIZE);
+    
+    // Mark the block as free
+    current->free = 1;
+    
+    // If the next block is free, merge the two blocks
+    while(current->next != NULL && current->next->free){
+        // Add the size of the next block to the current block
+        current->size += HEADERSIZE + current->next->size;
+        
+        // The current block now points to the block after the next block
+        current->next = current->next->next;
+    }
+}
