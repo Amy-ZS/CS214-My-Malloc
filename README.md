@@ -1,6 +1,7 @@
 # CS214-My-Malloc
 
-Zixin Shi, NetID: zs391 %
+Zixin Shi, NetID: zs391 
+
 Yue Yao, NetID: yy730
 
 Test Plan:
