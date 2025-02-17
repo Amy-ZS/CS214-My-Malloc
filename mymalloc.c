@@ -38,3 +38,20 @@ void myalloc(size_t size, char *file, int line) {
     fprintf(stderr, "Out of memory in %s at line %d\n", file, line);
     exit(1);
 }
+
+void myfree(char *p, char *file, int line) {
+    int i, *q;
+    // find object
+    for (i = 0; i < OBJECTS; i++) {
+        if (obj[i] == p) {
+            q = (int *)p - 1;
+            *(int *)(p + *q) = *(int *)heap;
+            *(int *)(p + *q + 4) = 0;
+            *(int *)heap += *q + HEADERSIZE;
+            obj[i] = NULL;
+            return;
+        }
+    }
+    fprintf(stderr, "Attempt to free unallocated memory in %s at line %d\n", file, line);
+    exit(1);
+}
