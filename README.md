@@ -100,7 +100,7 @@ Test Plan:
 6. Stress Testing
     These tests verify that the implementation can handle larger workloads.
     
-    Test 10: Memgrind Stress Test
+    Test 12: Memgrind Stress Test
     Description: Test the performance and robustness of the mymalloc() and myfree() implementations under heavy use.
     Steps:
     Implement a workload that performs the following operations repeatedly 50 times:
