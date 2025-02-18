@@ -19,7 +19,10 @@ typedef struct header {
     int free;
 } header;
 
-void myalloc_init(){
+static int is_initialized = 0; // Flag to track initialization
+
+// Function to initialize memory
+void myalloc_init() {
     // Cast the start of the heap to a header pointer
     header *first = (header*)heap.bytes;
     
@@ -31,10 +34,13 @@ void myalloc_init(){
     
     // Mark the block as free
     first->free = 1;
+    
+    // Set the initialized flag
+    is_initialized = 1;
 }
 
 void * mymalloc(size_t size, char *file, int line){
-    if(! myalloc_init){
+    if(!is_initialized){
         myalloc_init();
     }
     // Cast the start of the heap to a header pointer
@@ -44,6 +50,7 @@ void * mymalloc(size_t size, char *file, int line){
     while(current->size < size || !current->free){
         // If there is no next block, return NULL
         if(current->next == NULL){
+            printf("Error: Unable to allocate memory in file %s at line %d\n", file, line);
             return NULL;
         }
         // Move to the next block
@@ -82,7 +89,7 @@ void * mymalloc(size_t size, char *file, int line){
 }
 
 void myfree(void *ptr, char *file, int line){
-    if (! myalloc_init){
+    if (! is_initialized){
         myalloc_init();
     }
 
