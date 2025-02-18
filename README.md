@@ -84,20 +84,20 @@ Test Plan:
     Expected Outcome: The memory manager should coalesce the two adjacent free chunks into a larger one, and malloc() should return a pointer to this new chunk.
 
 5. Edge Case Tests
-  These tests handle unusual or extreme conditions to ensure robustness.
-  
-  Test 10: Allocation of Zero Bytes
-  Description: Test allocating 0 bytes.
-  Steps:
-  Call malloc(0).
-  Expected Outcome: The allocation should succeed, and it should return a non-NULL pointer. The memory should be valid for checking, and no errors should be reported.
-  
-  Test 11: Large Allocation
-  Description: Test allocating a very large block of memory.
-  Steps:
-  Request an allocation larger than the available memory (e.g., more than MEMLENGTH).
-  Verify that the allocation fails gracefully.
-  Expected Outcome: The allocation should fail, and the error message malloc: Unable to allocate X bytes (source.c:line_number) should be printed.
+    These tests handle unusual or extreme conditions to ensure robustness.
+    
+    Test 10: Allocation of Zero Bytes
+    Description: Test allocating 0 bytes.
+    Steps:
+    Call malloc(0).
+    Expected Outcome: The allocation should succeed, and it should return a non-NULL pointer. The memory should be valid for checking, and no errors should be reported.
+    
+    Test 11: Large Allocation
+    Description: Test allocating a very large block of memory.
+    Steps:
+    Request an allocation larger than the available memory (e.g., more than MEMLENGTH).
+    Verify that the allocation fails gracefully.
+    Expected Outcome: The allocation should fail, and the error message malloc: Unable to allocate X bytes (source.c:line_number) should be printed.
 
 6. Stress Testing
     These tests verify that the implementation can handle larger workloads.
