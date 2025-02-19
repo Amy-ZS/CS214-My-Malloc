@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+errno = ENOMEM;
 
 #define MEMLENGTH 4096
 #define MAGIC 0xDEADBEEF
@@ -12,13 +14,13 @@ typedef struct memory_block {
     size_t size;          
     int is_free;             
     struct memory_block *next;
-    unsigned int magic_number;}
-    memory_block_t;
+    unsigned int magic_number;
+    }memory_block_t;
 
-static union {
-    char bytes[MEMLENGTH];
-    double not_used;
-    }heap;
+    static union {
+        char bytes[MEMLENGTH];
+        double not_used;
+    } heap;
 
 static memory_block_t *free_list = NULL;
 static int pool_initialized = 0;
@@ -139,23 +141,23 @@ static void coalesce(memory_block_t *block) {
         return;
     }
     if (block->next && block->next->is_free) {
-        printf("Coalescing block at %p with next block at %p\n", (void*)block, (void*)block->next);
-        printf("Current block size: %zu, Next block size: %zu\n", block->size, block->next->size);
+        //printf("Coalescing block at %p with next block at %p\n", (void*)block, (void*)block->next);
+        //printf("Current block size: %zu, Next block size: %zu\n", block->size, block->next->size);
 
         block->size = block->size + block->next->size + sizeof(memory_block_t);
         block->next = block->next->next;
-        printf("After coalescing, current block size: %zu\n", block->size);}
-
+        //printf("After coalescing, current block size: %zu\n", block->size);}
+    }
         memory_block_t *prev = free_list;
         while (prev && prev->next != block){
             prev = prev->next;}
         if(prev&& prev->is_free){
-            printf("Coalescing previous block at %p with current block at %p\n", (void*)prev, (void*)block);
-            printf("Previous block size: %zu, Current block size: %zu\n", prev->size, block->size);
+            //printf("Coalescing previous block at %p with current block at %p\n", (void*)prev, (void*)block);
+            //printf("Previous block size: %zu, Current block size: %zu\n", prev->size, block->size);
 
             prev->size += block->size + sizeof(memory_block_t);
             prev->next = block->next;
-            printf("After coalescing, previous block size: %zu\n", prev->size);
+            //printf("After coalescing, previous block size: %zu\n", prev->size);
         }
     }
 
