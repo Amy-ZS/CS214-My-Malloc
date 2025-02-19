@@ -1,153 +1,151 @@
+#include "mymalloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "mymalloc.h"
-#define MEMLENGTH 4096
 
-// 使用 union 来模拟堆内存池
+#define MEMLENGTH 4096
+#define MAGIC 0xDEADBEEF
+
+
 static union {
-    memory_block_t block;
-    char bytes[MEMLENGTH];  // 模拟内存池（字节数组）
-    double not_used;        // 用于内存对齐
+    char bytes[MEMLENGTH];
+    double not_used;
 } heap;
 
-static memory_block_t *free_list = NULL;  // 空闲块链表
-static int pool_initialized = 0;  // 标记内存池是否初始化
+static memory_block_t *free_list = NULL;
+static int pool_initialized = 0;
 
 typedef struct memory_block {
-    size_t size;            // 块大小（包括元数据）
-    int is_free;            // 0 = 已分配, 1 = 空闲
-    struct memory_block *next; // 指向下一个块
-} memory_block_t;
+    size_t size;          
+    int is_free;             
+    struct memory_block *next;
+    unsigned int magic_number;}
+    memory_block_t;
 
-static void initialize_free_list();  // 分离的空闲块链表初始化函数
-static void leak_detector();
+static void initialize_free_list(); 
+static void initialize_pool();
+static void leak_detector(); 
 static void split_block(memory_block_t *block, size_t size);
-static void coalesce(memory_block_t *block);
+static void coalesce(memory_block_t *block); 
 size_t align8(size_t size);
 memory_block_t *find_free_block(size_t size);
 
-// 内存分配
 void *mymalloc(size_t size, char *file, int line) {
     if (!pool_initialized) {
         initialize_pool();
     }
 
-    // 对齐大小
     size = align8(size);
 
-    // 找到合适的空闲块
     memory_block_t *block = find_free_block(size);
     if (block == NULL) {
-        // 内存池不足，返回NULL
         fprintf(stderr, "malloc: Unable to allocate %zu bytes (%s:%d)\n", size, file, line);
         return NULL;
     }
-
-    // 如果找到的块大于请求的大小，尝试拆分
     split_block(block, size);
 
-    block->is_free = 0;  // 标记为已分配
-    return (void *)(block + 1);  // 返回指向数据区的指针
+    block->is_free = 0;
+    block->magic_number = MAGIC;
+    return (void *)(block + 1);
 }
 
-// 内存释放
 void myfree(void *ptr, char *file, int line) {
     if (ptr == NULL) {
         fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
         exit(2);
     }
 
-    memory_block_t *block = (memory_block_t *)ptr - 1;  // 获取元数据块
+    memory_block_t *block = (memory_block_t *)ptr - 1;
 
-    // 检查指针是否有效
+    if ((char*)block < heap.bytes || (char*)block >= heap.bytes + MEMLENGTH) {
+        fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
+        exit(2);
+    }
+
+    if (block->magic_number != MAGIC) {
+        fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
+        exit(2);
+    }
+
     if (block->is_free) {
         fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
         exit(2);
     }
 
-    // 标记块为空闲
     block->is_free = 1;
 
-    // 合并相邻的空闲块，防止内存碎片
     coalesce(block);
-
-    // 检查泄漏情况
     leak_detector();
 }
 
-// 内存池初始化
 static void initialize_pool() {
-    initialize_free_list();  // 初始化 free_list
-    pool_initialized = 1;    // 标记内存池已初始化
-    atexit(leak_detector);   // 注册泄漏检测器
+    initialize_free_list();
+    pool_initialized = 1;
+    atexit(leak_detector);
 }
 
-// 空闲块链表初始化
 static void initialize_free_list() {
-    free_list = (memory_block_t *)heap.bytes;  // 设置 free_list 为内存池的开始位置
-    free_list->size = MEMLENGTH;               // 设置空闲块的大小为内存池的总大小
-    free_list->is_free = 1;                    // 设置为空闲
-    free_list->next = NULL;                    // 初始化为没有后续块
+    free_list = (memory_block_t *)heap.bytes;
+    free_list->size = MEMLENGTH;
+    free_list->is_free = 1;
+    free_list->next = NULL;
+    free_list->magic_number = MAGIC;
 }
 
-// 查找适合的空闲块
 memory_block_t *find_free_block(size_t size) {
     memory_block_t *current = free_list;
 
     while (current != NULL) {
         if (current->is_free && current->size >= size) {
-            return current;  // 找到合适的空闲块
+            return current;
         }
         current = current->next;
     }
 
-    return NULL;  // 没有合适的空闲块
+    return NULL;
 }
 
-// 拆分块，如果剩余空间大于最小块大小
 static void split_block(memory_block_t *block, size_t size) {
-    // 如果剩余空间大于最小块大小
     if (block->size >= size + sizeof(memory_block_t) + 8) {
         memory_block_t *new_block = (memory_block_t *)((char *)block + size + sizeof(memory_block_t));
         new_block->size = block->size - size - sizeof(memory_block_t);
         new_block->is_free = 1;
         new_block->next = block->next;
+        new_block->magic_number = MAGIC;
 
         block->size = size;
-        block->next = new_block;  // 链接新的空闲块
+        block->next = new_block;
     }
 }
 
-// 合并相邻的空闲块
 static void coalesce(memory_block_t *block) {
     if (block->next && block->next->is_free) {
-        block->size += block->next->size + sizeof(memory_block_t);
-        block->next = block->next->next;  // 跳过已合并的块
+        blcok->size = block-> size + block->next->size + sizeof(memory_block_t);
+        block->next = block->next->next;}
+        memory_block_t *prev = free_list;
+        while (prev && prev->next != block){
+            prev = prev->next;}
+        if(prev&& prev->is_free){
+            prev->size += block->size + sizeof(memory_block_t);
+            prev->next = block->next;
+        }
     }
-}
 
-// 内存泄漏检测
-static void leak_detector() {
+static void leak_detector(){
     memory_block_t *current = free_list;
     size_t total_leaked = 0;
-    size_t leaked_count = 0;
-
-    while (current != NULL) {
-        if (!current->is_free) {
-            total_leaked += current->size;
-            leaked_count++;
+    size_t total_count = 0;
+    while(current! = NULL){
+        if(!current->is_free){
+        total_leaked += current->size;
+        total_count++;}
+        current = current->next;}
+        if(total_count > 0){
+            fprintf(stderr, "mymalloc: %zu bytes leaked in %zu objects.\n", total_leaked, total_count);
         }
-        current = current->next;
     }
 
-    if (leaked_count > 0) {
-        fprintf(stderr, "mymalloc: %zu bytes leaked in %zu objects.\n", total_leaked, leaked_count);
+size_t align8(size_t size){
+        return (size + 7) & ~7;
     }
-}
-
-// 确保 8 字节对齐
-size_t align8(size_t size) {
-    return (size + 7) & ~7;  // 向上对齐到 8 的倍数
-}
