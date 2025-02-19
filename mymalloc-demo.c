@@ -8,14 +8,6 @@
 #define MAGIC 0xDEADBEEF
 
 
-static union {
-    char bytes[MEMLENGTH];
-    double not_used;
-} heap;
-
-static memory_block_t *free_list = NULL;
-static int pool_initialized = 0;
-
 typedef struct memory_block {
     size_t size;          
     int is_free;             
@@ -23,9 +15,18 @@ typedef struct memory_block {
     unsigned int magic_number;}
     memory_block_t;
 
-static void initialize_free_list(); 
-static void initialize_pool();
-static void leak_detector(); 
+    static union {
+        char bytes[MEMLENGTH];
+        double not_used;
+    } heap;
+
+static memory_block_t *free_list = NULL;
+static int pool_initialized = 0;
+
+
+static void initialize_free_list(void); 
+static void initialize_pool(void);
+static void leak_detector(void); 
 static void split_block(memory_block_t *block, size_t size);
 static void coalesce(memory_block_t *block); 
 size_t align8(size_t size);
@@ -79,14 +80,14 @@ void myfree(void *ptr, char *file, int line) {
     leak_detector();
 }
 
-static void initialize_pool() {
+static void initialize_pool(void) {
     if(!pool_initialized){
     initialize_free_list();
     pool_initialized = 1;
     atexit(leak_detector);}
 }
 
-static void initialize_free_list() {
+static void initialize_free_list(void) {
     free_list = (memory_block_t *)heap.bytes;
     if (free_list == NULL) {
         fprintf(stderr, "initialize_free_list: Failed to initialize free list.\n");
@@ -138,18 +139,27 @@ static void coalesce(memory_block_t *block) {
         return;
     }
     if (block->next && block->next->is_free) {
+        printf("Coalescing block at %p with next block at %p\n", (void*)block, (void*)block->next);
+        printf("Current block size: %zu, Next block size: %zu\n", block->size, block->next->size);
+
         block->size = block->size + block->next->size + sizeof(memory_block_t);
-        block->next = block->next->next;}
+        block->next = block->next->next;
+        printf("After coalescing, current block size: %zu\n", block->size);}
+
         memory_block_t *prev = free_list;
         while (prev && prev->next != block){
             prev = prev->next;}
         if(prev&& prev->is_free){
+            printf("Coalescing previous block at %p with current block at %p\n", (void*)prev, (void*)block);
+            printf("Previous block size: %zu, Current block size: %zu\n", prev->size, block->size);
+
             prev->size += block->size + sizeof(memory_block_t);
             prev->next = block->next;
+            printf("After coalescing, previous block size: %zu\n", prev->size);
         }
     }
 
-static void leak_detector(){
+static void leak_detector(void){
     memory_block_t *current = free_list;
     size_t total_leaked = 0;
     size_t total_count = 0;
