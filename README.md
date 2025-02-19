@@ -99,31 +99,25 @@ Test Plan:
     Verify that the allocation fails gracefully.
     Expected Outcome: The allocation should fail, and the error message malloc: Unable to allocate X bytes (source.c:line_number) should be printed.
 
-6. Stress Testing
-    These tests verify that the implementation can handle larger workloads.
-    
-    Test 12: Memgrind Stress Test
-    Description: Test the performance and robustness of the mymalloc() and myfree() implementations under heavy use.
-    Steps:
-    Implement a workload that performs the following operations repeatedly 50 times:
-    Allocate and free a 1-byte object.
-    Allocate 120 1-byte objects and free them.
-    Randomly choose between allocating and deallocating objects.
-    Ensure that after each workload, all allocated memory is freed.
-    Measure the average time taken for the workload.
-    Expected Outcome: The memory manager should be able to handle the stress test without errors or crashes, and it should print the average execution time.
-
-7. Boundary Condition Tests
+6. Boundary Condition Tests
     These tests ensure that the allocator correctly handles boundary cases, such as small allocations and edge memory locations.
     
-    Test 13: Minimum Chunk Size Allocation
+    Test 12: Minimum Chunk Size Allocation
     Description: Test allocating the smallest chunk possible (16 bytes, due to alignment).
     Steps:
     Call malloc(1) to request a 1-byte allocation.
     Expected Outcome: The program should round the allocation up to 16 bytes, and malloc() should return a pointer to a 16-byte chunk.
     
-    Test 14: Memory Overflow
+    Test 13: Memory Overflow
     Description: Test the system's handling of requests that exceed the total available memory.
     Steps:
     Request an allocation that exceeds the available memory (greater than MEMLENGTH).
     Expected Outcome: The allocation should fail, and the appropriate error message should be printed.
+
+Stress Test:
+1. malloc() and immediately free() a 1-byte object, 120 times.
+2. Use malloc() to get 120 1-byte objects, storing the pointers in an array, then use free() to deallocate the chunks.
+3. Create an array of 120 pointers. Repeatedly make a random choice between (a) allocating a 1-byte object and adding the pointer to the array and (b) deallocating a previously allocated object (if any). Once 120 allocations have been performed, deallocate all objects.
+4. Perform a sequence of malloc() and free() calls with random choices.
+Randomly decide whether to allocate memory or free a previously allocated block. Ensure that you never free more blocks than you’ve allocated. After completing the random sequence, free any remaining allocated memory.
+5. Allocate blocks of varying sizes in a sequence.Free blocks in random order, making sure to leave gaps between allocations.Try to allocate new blocks that fit into the gaps left by freed blocks, testing whether your implementation can coalesce the fragmented memory.
