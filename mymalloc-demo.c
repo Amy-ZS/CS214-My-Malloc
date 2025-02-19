@@ -20,7 +20,7 @@ typedef struct memory_block {
     static union {
         char bytes[MEMLENGTH];
         double not_used;
-    } heap;
+    }heap;
 
 static memory_block_t *free_list = NULL;
 static int pool_initialized = 0;
@@ -123,7 +123,7 @@ static void split_block(memory_block_t *block, size_t size) {
         fprintf(stderr, "split_block: NULL block pointer.\n");
         return;
     }
-    if (block->size >= size + sizeof(memory_block_t) + 8) {
+    if (block->size >= size + sizeof(memory_block_t)) {
         memory_block_t *new_block = (memory_block_t *)((char *)block + size + sizeof(memory_block_t));
         new_block->size = block->size - size - sizeof(memory_block_t);
         new_block->is_free = 1;
