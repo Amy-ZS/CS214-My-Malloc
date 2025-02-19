@@ -15,10 +15,10 @@ typedef struct memory_block {
     unsigned int magic_number;}
     memory_block_t;
 
-    static union {
-        char bytes[MEMLENGTH];
-        double not_used;
-    } heap;
+static union {
+    char bytes[MEMLENGTH];
+    double not_used;
+    }heap;
 
 static memory_block_t *free_list = NULL;
 static int pool_initialized = 0;
