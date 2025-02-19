@@ -53,7 +53,7 @@ void *mymalloc(size_t size, char *file, int line) {
 void myfree(void *ptr, char *file, int line) {
     if (ptr == NULL) {
         fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
-        exit(2);
+        return;
     }
 
     memory_block_t *block = (memory_block_t *)ptr - 1;
@@ -80,13 +80,18 @@ void myfree(void *ptr, char *file, int line) {
 }
 
 static void initialize_pool() {
+    if(!pool_initialized){
     initialize_free_list();
     pool_initialized = 1;
-    atexit(leak_detector);
+    atexit(leak_detector);}
 }
 
 static void initialize_free_list() {
     free_list = (memory_block_t *)heap.bytes;
+    if (free_list == NULL) {
+        fprintf(stderr, "initialize_free_list: Failed to initialize free list.\n");
+        return;
+    }
     free_list->size = MEMLENGTH;
     free_list->is_free = 1;
     free_list->next = NULL;
@@ -94,6 +99,10 @@ static void initialize_free_list() {
 }
 
 memory_block_t *find_free_block(size_t size) {
+    if (free_list == NULL) {
+        fprintf(stderr, "initialize_free_list: Failed to initialize free list.\n");
+        return NULL;
+    }
     memory_block_t *current = free_list;
 
     while (current != NULL) {
@@ -107,6 +116,10 @@ memory_block_t *find_free_block(size_t size) {
 }
 
 static void split_block(memory_block_t *block, size_t size) {
+    if (block == NULL) {
+        fprintf(stderr, "split_block: NULL block pointer.\n");
+        return;
+    }
     if (block->size >= size + sizeof(memory_block_t) + 8) {
         memory_block_t *new_block = (memory_block_t *)((char *)block + size + sizeof(memory_block_t));
         new_block->size = block->size - size - sizeof(memory_block_t);
@@ -120,8 +133,12 @@ static void split_block(memory_block_t *block, size_t size) {
 }
 
 static void coalesce(memory_block_t *block) {
+    if (block == NULL) {
+        fprintf(stderr, "coalesce: NULL block pointer.\n");
+        return;
+    }
     if (block->next && block->next->is_free) {
-        blcok->size = block-> size + block->next->size + sizeof(memory_block_t);
+        block->size = block->size + block->next->size + sizeof(memory_block_t);
         block->next = block->next->next;}
         memory_block_t *prev = free_list;
         while (prev && prev->next != block){
@@ -136,7 +153,7 @@ static void leak_detector(){
     memory_block_t *current = free_list;
     size_t total_leaked = 0;
     size_t total_count = 0;
-    while(current! = NULL){
+    while(current != NULL){
         if(!current->is_free){
         total_leaked += current->size;
         total_count++;}
