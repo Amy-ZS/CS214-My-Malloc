@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
+#include <stddef.h>
 #include "mymalloc.h"
+//#include <my
 
 #define MEMSIZE 4096     // size of memory pool  4096 bytes
 #define HEADERSIZE 8      // size of header  8 bytes
@@ -15,7 +16,7 @@ static union{
 
 typedef struct header {
     int size;
-    header *next;
+    struct header *next;
     int free;
 } header;
 
@@ -23,6 +24,7 @@ static int is_initialized = 0; // Flag to track initialization
 
 // Function to initialize memory
 void myalloc_init() {
+    printf("Initializing memory...\n");
     // Cast the start of the heap to a header pointer
     header *first = (header*)heap.bytes;
     
@@ -37,9 +39,11 @@ void myalloc_init() {
     
     // Set the initialized flag
     is_initialized = 1;
+    printf("Memory initialized.\n");
 }
 
 void * mymalloc(size_t size, char *file, int line){
+    printf("mymalloc called from file %s at line %d\n", file, line);
     if(!is_initialized){
         myalloc_init();
     }
@@ -55,10 +59,12 @@ void * mymalloc(size_t size, char *file, int line){
         }
         // Move to the next block
         current = current->next;
+        printf("#########\n");
     }
     
     // If the block is larger than the requested size plus the size of the header
     if(current->size > size + HEADERSIZE){
+        printf("*********\n");
         // Create a new block after the current block
         header *new_block = (header*)((char*)current + HEADERSIZE + size);
         
@@ -79,32 +85,37 @@ void * mymalloc(size_t size, char *file, int line){
         
         // The current block points to the new block
         current->next = new_block;
-    } else {
+    } 
+    else if(current->size >= size){
         // The current block is now the requested size
+        printf("$$$$$$$$$\n");
         current->free = 0;
+        current->next = NULL;
+        current->size = size;
     }
     
     // Return a pointer to the start of the block
+    printf("Allocated %zu bytes in file %s at line %d\n", size, file, line);
+    printf("allocating block at address %p with size %d\n", current, current->size);
     return (char*)current + HEADERSIZE;
 }
 
 void myfree(void *ptr, char *file, int line){
-    if (! is_initialized){
+    printf("myfree called from file %s at line %d\n", file, line);
+    if (!is_initialized){
         myalloc_init();
     }
 
     // Cast the pointer to a header pointer
     header *current = (header*)((char*)ptr - HEADERSIZE);
-    
+    printf("Freeing block at address %p with size %d\n", current, current->size);
     // Mark the block as free
     current->free = 1;
     
     // If the next block is free, merge the two blocks
-    while(current->next != NULL && current->next->free){
-        // Add the size of the next block to the current block
-        current->size += HEADERSIZE + current->next->size;
-        
-        // The current block now points to the block after the next block
-        current->next = current->next->next;
-    }
+    //printf("%p, %d\n", current->next, current->next->free);
+    printf("^^^^^^^^^^^^\n");
+    
+    
+    printf("Freed memory in file %s at line %d\n", file, line);
 }
