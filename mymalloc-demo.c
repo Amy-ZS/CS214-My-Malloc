@@ -1,16 +1,17 @@
+#include <stddef.h>
 #include "mymalloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <errno.h>
-errno = ENOMEM;
+//#include <errno.h>
+//extern int errno; errno = ENOMEM;
 
 #define MEMLENGTH 4096
 #define MAGIC 0xDEADBEEF
 
 
-typedef struct memory_block {
+typedef struct memory_block{
     size_t size;          
     int is_free;             
     struct memory_block *next;
@@ -42,6 +43,7 @@ void *mymalloc(size_t size, char *file, int line) {
     size = align8(size);
 
     memory_block_t *block = find_free_block(size);
+    errno = ENOMEM;
     if (block == NULL) {
         fprintf(stderr, "malloc: Unable to allocate %zu bytes (%s:%d)\n", size, file, line);
         return NULL;
@@ -54,6 +56,7 @@ void *mymalloc(size_t size, char *file, int line) {
 }
 
 void myfree(void *ptr, char *file, int line) {
+    errno = ENOMEM;
     if (ptr == NULL) {
         fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
         return;
@@ -84,6 +87,7 @@ void myfree(void *ptr, char *file, int line) {
 
 static void initialize_pool(void) {
     if(!pool_initialized){
+    errno = ENOMEM;
     initialize_free_list();
     pool_initialized = 1;
     atexit(leak_detector);}
@@ -91,6 +95,7 @@ static void initialize_pool(void) {
 
 static void initialize_free_list(void) {
     free_list = (memory_block_t *)heap.bytes;
+    errno = ENOMEM;
     if (free_list == NULL) {
         fprintf(stderr, "initialize_free_list: Failed to initialize free list.\n");
         return;
@@ -102,6 +107,7 @@ static void initialize_free_list(void) {
 }
 
 memory_block_t *find_free_block(size_t size) {
+    errno = ENOMEM;
     if (free_list == NULL) {
         fprintf(stderr, "initialize_free_list: Failed to initialize free list.\n");
         return NULL;
@@ -119,6 +125,7 @@ memory_block_t *find_free_block(size_t size) {
 }
 
 static void split_block(memory_block_t *block, size_t size) {
+    errno = ENOMEM;
     if (block == NULL) {
         fprintf(stderr, "split_block: NULL block pointer.\n");
         return;
@@ -136,6 +143,7 @@ static void split_block(memory_block_t *block, size_t size) {
 }
 
 static void coalesce(memory_block_t *block) {
+    errno = ENOMEM;
     if (block == NULL) {
         fprintf(stderr, "coalesce: NULL block pointer.\n");
         return;
@@ -176,5 +184,6 @@ static void leak_detector(void){
     }
 
 size_t align8(size_t size){
+    errno = ENOMEM;
         return (size + 7) & ~7;
     }
